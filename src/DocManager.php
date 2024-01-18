@@ -3,10 +3,9 @@
 namespace JaguarJack\MigrateGenerator;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Driver\PDOMySql\Driver as MysqlDriver;
-use Doctrine\DBAL\Driver\PDOPgSql\Driver as PgSqlDriver;
-use Doctrine\DBAL\Driver\PDOOracle\Driver as OracleDriver;
-use Doctrine\DBAL\Driver\PDOSqlite\Driver as SqliteDriver;
+use Doctrine\DBAL\Driver\PDO\MySQL\Driver as MysqlDriver;
+use Doctrine\DBAL\Driver\PDO\PgSQL\Driver as PgSqlDriver;
+use Doctrine\DBAL\Driver\PDO\SQLite\Driver as SqliteDriver;
 use Doctrine\DBAL\Driver\SQLSrv\Driver as SQLSrvDriver;
 use Doctrine\DBAL\Platforms\MySQL57Platform;
 use Doctrine\DBAL\Types\Type as DoctrineType;
@@ -80,7 +79,9 @@ class DocManager
     public function getDoctrineManage()
     {
         if (!$this->doctrineManager) {
-            $this->doctrineManager =  $this->getDoctrineDriver()->getSchemaManager($this->getDoctrineConnection());
+            $this->doctrineManager =  $this->getDoctrineDriver()
+                ->createDatabasePlatformForVersion('8.0.24')
+                ->createSchemaManager($this->getDoctrineConnection());
         }
 
         return $this->doctrineManager;
@@ -111,7 +112,6 @@ class DocManager
         if (!$this->doctrineConnection) {
             if ($this->isLaravel()) {
                 return $this->getLaravelDoctrineConnection();
-                //return $this->getThinkPhpDoctrineConnection();
             }
 
             if ($this->isThinkPHP()) {
@@ -144,10 +144,16 @@ class DocManager
      */
     protected function getThinkPhpDoctrineConnection(): Connection
     {
-        return new Connection([
-            'pdo' => $this->ThinkPHPPdoObject(),
-            'platform' => new MySQL57Platform,
-        ], $this->getDoctrineDriver());
+        $connections = config('database.connections');
+        $dataConfig = [
+            'dbname' => $connections['mysql']['database'],
+            'host' => $connections['mysql']['hostname'],
+            'port' => $connections['mysql']['hostport'],
+            'user' => $connections['mysql']['username'],
+            'password' => $connections['mysql']['password'],
+            'charset' => $connections['mysql']['charset'],
+        ] ;
+        return new Connection($dataConfig, $this->getDoctrineDriver());
     }
 
     /**
@@ -162,8 +168,6 @@ class DocManager
             throw new \Exception('not support [mongo] database yet');
           case 'mysql':
             return new MysqlDriver();
-          case 'oracle':
-            return new OracleDriver();
           case 'pgsql':
             return new PgSqlDriver();
           case 'sqlite':

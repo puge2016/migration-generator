@@ -18,7 +18,6 @@ class Database
     public function __construct(DocManager $docManager)
     {
         $this->doctrineManager = $docManager->getDoctrineManage();
-
         $this->doctrineConnection = $docManager->getDoctrineConnection();
     }
 
@@ -31,7 +30,6 @@ class Database
     public function getAllTables(): array
     {
         $tables = $this->doctrineManager->listTables();
-
         foreach ($tables as &$table) {
             $table->addOption('name', $table->getName());
             $table->addOption('origin', $this->getOriginTableInformation($table->getName()));
@@ -93,7 +91,11 @@ class Database
      */
     public function getOriginTableInformation($tableName): array
     {
-        return $this->doctrineConnection->fetchAll($this->doctrineManager->getDatabasePlatform()->getListTableColumnsSQL($tableName));
+        return $this->doctrineConnection->fetchAllAssociative(
+            $this->doctrineManager
+            ->getDatabasePlatform()
+            ->getListTableColumnsSQL($tableName)
+        );
     }
 
     /**
